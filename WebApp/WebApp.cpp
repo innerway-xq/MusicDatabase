@@ -7,7 +7,7 @@
 
 #include "rendering.h"
 #include "handlers.h"
-
+//test
 void show_usage(const bserv::server_config& config) {
 	std::cout << "Usage: " << config.get_name() << " [config.json]\n"
 		<< config.get_name() << " is a C++ HTTP server.\n\n"
