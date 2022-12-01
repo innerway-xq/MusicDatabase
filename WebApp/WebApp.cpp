@@ -126,6 +126,16 @@ int main(int argc, char* argv[]) {
 			bserv::placeholders::json_params,
 			bserv::placeholders::db_connection_ptr,
 			bserv::placeholders::session),
+		bserv::make_path("/music_repo", &view_music_repo,
+			bserv::placeholders::db_connection_ptr,
+			bserv::placeholders::session,
+			bserv::placeholders::response,
+			std::string{"1"}),
+		bserv::make_path("/music_repo/<int>", &view_music_repo,
+			bserv::placeholders::db_connection_ptr,
+			bserv::placeholders::session,
+			bserv::placeholders::response,
+			bserv::placeholders::_1),
 		}
 		, {
 			// websocket example

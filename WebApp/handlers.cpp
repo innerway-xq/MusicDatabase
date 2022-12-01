@@ -26,6 +26,14 @@ bserv::db_relation_to_object orm_user{
 	bserv::make_db_field<bool>("is_active")
 };
 
+bserv::db_relation_to_object orm_music{
+	bserv::make_db_field<int>("music_id"),
+	bserv::make_db_field<int>("musician_id"),
+	bserv::make_db_field<std::string>("music_name"),
+	bserv::make_db_field<std::string>("content_path"),
+	bserv::make_db_field<std::string>("music_path"),
+};
+
 std::optional<boost::json::object> get_user(
 	bserv::db_transaction& tx,
 	const boost::json::string& username) {
@@ -369,6 +377,68 @@ std::nullopt_t redirect_to_users(
 	return index("users.html", session_ptr, response, context);
 }
 
+std::nullopt_t redirect_to_music_repo(
+	std::shared_ptr<bserv::db_connection> conn,
+	std::shared_ptr<bserv::session_type> session_ptr,
+	bserv::response_type& response,
+	int page_id,
+	boost::json::object&& context) {
+	lgdebug << "view music_repo: " << page_id << std::endl;
+	bserv::db_transaction tx{ conn };
+	bserv::db_result db_res = tx.exec("select count(*) from music;");
+	lginfo << db_res.query();
+	std::size_t total_music_repo = (*db_res.begin())[0].as<std::size_t>();
+	lgdebug << "total music_repo: " << total_music_repo << std::endl;
+	int total_pages = (int)total_music_repo / 10;
+	if (total_music_repo % 10 != 0) ++total_pages;
+	lgdebug << "total pages: " << total_pages << std::endl;
+	db_res = tx.exec("select * from music limit 10 offset ?;", (page_id - 1) * 10);
+	lginfo << db_res.query();
+	auto music_repo = orm_music.convert_to_vector(db_res);
+	boost::json::array json_music_repo;
+	for (auto& music : music_repo) {
+		json_music_repo.push_back(music);
+	}
+	boost::json::object pagination;
+	if (total_pages != 0) {
+		pagination["total"] = total_pages;
+		if (page_id > 1) {
+			pagination["previous"] = page_id - 1;
+		}
+		if (page_id < total_pages) {
+			pagination["next"] = page_id + 1;
+		}
+		int lower = page_id - 3;
+		int upper = page_id + 3;
+		if (page_id - 3 > 2) {
+			pagination["left_ellipsis"] = true;
+		}
+		else {
+			lower = 1;
+		}
+		if (page_id + 3 < total_pages - 1) {
+			pagination["right_ellipsis"] = true;
+		}
+		else {
+			upper = total_pages;
+		}
+		pagination["current"] = page_id;
+		boost::json::array pages_left;
+		for (int i = lower; i < page_id; ++i) {
+			pages_left.push_back(i);
+		}
+		pagination["pages_left"] = pages_left;
+		boost::json::array pages_right;
+		for (int i = page_id + 1; i <= upper; ++i) {
+			pages_right.push_back(i);
+		}
+		pagination["pages_right"] = pages_right;
+		context["pagination"] = pagination;
+	}
+	context["music_repo"] = json_music_repo;
+	return index("music_repo.html", session_ptr, response, context);
+}
+
 std::nullopt_t view_users(
 	std::shared_ptr<bserv::db_connection> conn,
 	std::shared_ptr<bserv::session_type> session_ptr,
@@ -387,4 +457,14 @@ std::nullopt_t form_add_user(
 	std::shared_ptr<bserv::session_type> session_ptr) {
 	boost::json::object context = user_register(request, std::move(params), conn);
 	return redirect_to_users(conn, session_ptr, response, 1, std::move(context));
+}
+
+std::nullopt_t view_music_repo(
+	std::shared_ptr<bserv::db_connection> conn,
+	std::shared_ptr<bserv::session_type> session_ptr,
+	bserv::response_type& response,
+	const std::string& page_num) {
+	int page_id = std::stoi(page_num);
+	boost::json::object context;
+	return redirect_to_music_repo(conn, session_ptr, response, page_id, std::move(context));
 }
