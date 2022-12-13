@@ -2,7 +2,7 @@
 
 {% block title %}Music repo{% endblock %}
 
-{% block users_active %}active{% endblock %}
+{% block musicrepo_active %}active{% endblock %}
 
 {% block content %}
 <!-- Button trigger modal -->
@@ -22,24 +22,16 @@
         </div>
         <div class="modal-body">
           <div class="mb-3">
-            <label for="username" class="form-label">Username</label>
-            <input type="text" class="form-control" id="username" name="username" placeholder="Username">
+            <label for="music_name" class="form-label">Musicname</label>
+            <input type="text" class="form-control" id="music_name" name="music_name" placeholder="Musicname">
           </div>
           <div class="mb-3">
-            <label for="first_name" class="form-label">First Name</label>
-            <input type="text" class="form-control" id="first_name" name="first_name" placeholder="First Name">
+            <label for="content_file" class="form-label">Content/歌词</label>
+            <input type="file" class="form-control" id="content_file" name="content_file">
           </div>
           <div class="mb-3">
-            <label for="last_name" class="form-label">Last Name</label>
-            <input type="text" class="form-control" id="last_name" name="last_name" placeholder="Last Name">
-          </div>
-          <div class="mb-3">
-            <label for="email" class="form-label">Email address</label>
-            <input type="email" class="form-control" id="email" name="email" placeholder="name@example.com">
-          </div>
-          <div class="mb-3">
-            <label for="password" class="form-label">Password</label>
-            <input type="password" class="form-control" id="password" name="password">
+            <label for="music_file" class="form-label">Music</label>
+            <input type="file" class="form-control" id="music_file" name="music_file">
           </div>
         </div>
         <div class="modal-footer">

@@ -13,13 +13,13 @@ CREATE TABLE music (
     music_id serial PRIMARY KEY,
     musician_id int references auth_user(id),
     music_name character varying(255) NOT NULL,
-    content_path character varying(255) NOT NULL,
+    content_path character varying(255),
     music_path character varying(255) NOT NULL
 );
 CREATE TABLE comment (
     comment_id serial PRIMARY KEY,
-    user_id int references auth_user(id),
-    music_id int references music(music_id),
+    user_id int references auth_user(id) NOT NULL,
+    music_id int references music(music_id) NOT NULL,
     comment_time timestamp NOT NULL,
     comment_content character varying(1023)
 );

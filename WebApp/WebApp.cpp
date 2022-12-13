@@ -136,6 +136,12 @@ int main(int argc, char* argv[]) {
 			bserv::placeholders::session,
 			bserv::placeholders::response,
 			bserv::placeholders::_1),
+		bserv::make_path("/form_add_music", &form_add_music,
+			bserv::placeholders::request,
+			bserv::placeholders::response,
+			bserv::placeholders::json_params,
+			bserv::placeholders::db_connection_ptr,
+			bserv::placeholders::session),
 		}
 		, {
 			// websocket example
