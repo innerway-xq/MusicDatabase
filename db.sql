@@ -7,7 +7,7 @@ CREATE TABLE auth_user (
     last_name character varying(255) NOT NULL,
     email character varying(255) NOT NULL,
     is_active boolean NOT NULL,
-    is_musician boolean DEFAULT false NOT NULL
+    is_musician int DEFAULT 0 NOT NULL
 );
 CREATE TABLE music (
     music_id serial PRIMARY KEY,

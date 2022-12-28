@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+
+{% block content %}
+
+
+
+
+{% if exists("user") %}
+<table class="table">
+  <thead>
+    <tr>
+      <th scope="col">#</th>
+      <th scope="col">Username</th>
+      <th scope="col">First</th>
+      <th scope="col">Last</th>
+      <th scope="col">Email</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr style="vertical-align: middle;">
+      <th scope="row">infornmation</th>
+      <td>{{ user.username }}</td>
+      <td>{{ user.first_name }}</td>
+      <td>{{ user.last_name }}</td>
+      <td>{{ user.email }}</td>
+    </tr>
+  </tbody>
+</table>
+
+<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#userModal">
+  zb_change_infornmation
+</button>
+
+<div class="modal fade" id="userModal" tabindex="-1" aria-labelledby="userModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" action="/zb_change_infornmation">
+        <div class="modal-header">
+          <h5 class="modal-title" id="userModalLabel">zb_change_infornmation</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="first_name" class="form-label">First Name</label>
+            <input type="text" class="form-control" id="first_name" name="first_name" placeholder="First Name">
+          </div>
+          <div class="mb-3">
+            <label for="last_name" class="form-label">Last Name</label>
+            <input type="text" class="form-control" id="last_name" name="last_name" placeholder="Last Name">
+          </div>
+          <div class="mb-3">
+            <label for="email" class="form-label">Email address</label>
+            <input type="email" class="form-control" id="email" name="email" placeholder="name@example.com">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">change</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+
+<form class="d-flex" method="post" action="/zb_disable">
+  <input class="form-control me-2" type="text" name="username" placeholder="Username" aria-label="Username">
+  <input class="form-control me-2" type="password" name="password" placeholder="Password"
+    aria-label="Password">
+  <button class="btn btn-outline-success" type="submit">disbale</button>
+</form>
+
+
+    {% if user.is_superuser %}
+        <li class="nav-item">
+            <a class="nav-link " href="/zb_find_applicant">superuser_UI</a>
+        </li>
+    {%else %}
+        {% if user.is_musician == 2 %}
+        <div class="alert alert-success" role="alert">
+           You are musician!
+          </div>
+        {% else %}
+            {% if user.is_musician == 0 %}
+            <h3>点击下方按钮以申请成为musician吧！</h3>
+            <li class="nav-item">
+              <a class="nav-link " href="/zb_be_musician">apply to be musician</a>
+            </li>
+            {% else if user.is_musician == 1 %}
+            <h3>申请成为musician成功！</h3>
+            {% endif %}
+        {% endif %}
+    {% endif%}
+
+
+
+
+
+
+{% else %}
+<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#userModal">
+    zb_register
+  </button>
+  
+  <div class="modal fade" id="userModal" tabindex="-1" aria-labelledby="userModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form method="post" action="/zb_register">
+          <div class="modal-header">
+            <h5 class="modal-title" id="userModalLabel">zb_register</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label for="username" class="form-label">Username</label>
+              <input type="text" class="form-control" id="username" name="username" placeholder="Username">
+            </div>
+            <div class="mb-3">
+              <label for="first_name" class="form-label">First Name</label>
+              <input type="text" class="form-control" id="first_name" name="first_name" placeholder="First Name">
+            </div>
+            <div class="mb-3">
+              <label for="last_name" class="form-label">Last Name</label>
+              <input type="text" class="form-control" id="last_name" name="last_name" placeholder="Last Name">
+            </div>
+            <div class="mb-3">
+              <label for="email" class="form-label">Email address</label>
+              <input type="email" class="form-control" id="email" name="email" placeholder="name@example.com">
+            </div>
+            <div class="mb-3">
+              <label for="password" class="form-label">Password</label>
+              <input type="password" class="form-control" id="password" name="password">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary">register</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+{% endif %}

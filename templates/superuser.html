@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+
+{% block content %}
+
+{% if user.is_superuser %}
+    <div class="alert alert-success" role="alert">
+      You are superuser!
+
+      <table class="table">
+        <thead>
+          <tr>
+            <th scope="col">#</th>
+            <th scope="col">Username</th>
+            <th scope="col">First</th>
+            <th scope="col">Last</th>
+            <th scope="col">Email</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for applicant in applicants %},
+          <tr style="vertical-align: middle;">
+            <th scope="row">{{ loop.index1 }}</th>
+            <td>{{ applicant.username }}</td>
+            <td>{{ applicant.first_name }}</td>
+            <td>{{ applicant.last_name }}</td>
+            <td>{{ applicant.email }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+
+    <form class="d-flex" method="post" action="/zb_verify/0">
+      <input class="form-control me-2" type="text" name="username" placeholder="Username" aria-label="Username">
+      <button class="btn btn-outline-success" type="submit">fail</button>
+    </form>
+
+    <form class="d-flex" method="post" action="/zb_verify/2">
+      <input class="form-control me-2" type="text" name="username" placeholder="Username" aria-label="Username">
+      <button class="btn btn-outline-success" type="submit">pass</button>
+    </form>
+{% endif%}
