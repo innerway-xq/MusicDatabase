@@ -24,7 +24,7 @@ bserv::db_relation_to_object orm_user{
 	bserv::make_db_field<std::string>("last_name"),
 	bserv::make_db_field<std::string>("email"),
 	bserv::make_db_field<bool>("is_active"),
-	bserv::make_db_field<bool>("is_musician")
+	bserv::make_db_field<int>("is_musician")
 };
 
 bserv::db_relation_to_object orm_music{
@@ -239,7 +239,7 @@ boost::json::object add_music(
 		};
 	}
 	auto& now_user = session["user"].as_object();
-	if (!now_user["is_musician"].as_bool()) {
+	if (!now_user["is_musician"].as_int64()) {
 		return {
 			{"success", false},
 			{"message", "not musician"}
@@ -531,4 +531,203 @@ std::nullopt_t form_add_music(
 	std::shared_ptr<bserv::session_type> session_ptr) {
 	boost::json::object context = add_music(request, std::move(params), conn, session_ptr);
 	return redirect_to_music_repo(conn, session_ptr, response, 1, std::move(context));
+}
+
+
+
+
+
+
+
+// added by zb
+std::nullopt_t zb_test_mainpage(											//主页面
+	std::shared_ptr<bserv::session_type> session_ptr,
+	bserv::response_type& response) {
+	boost::json::object context;
+	return index("zb_test.html", session_ptr, response, context);
+}
+
+std::nullopt_t zb_test_UI(											//主页面
+	std::shared_ptr<bserv::session_type> session_ptr,
+	bserv::response_type& response) {
+	boost::json::object context;
+	return index("zb_test_UI.html", session_ptr, response, context);
+}
+
+
+boost::json::object zb_user_register(										//注册（与数据库连接部分）
+	bserv::request_type& request,
+	// the json object is obtained from the request body,
+	// as well as the url parameters
+	boost::json::object&& params,
+	std::shared_ptr<bserv::db_connection> conn) {
+	if (request.method() != boost::beast::http::verb::post) {
+		throw bserv::url_not_found_exception{};
+	}
+	if (params.count("username") == 0) {
+		return {
+			{"success", false},
+			{"message", "`username` is required"}
+		};
+	}
+	if (params.count("password") == 0) {
+		return {
+			{"success", false},
+			{"message", "`password` is required"}
+		};
+	}
+	auto username = params["username"].as_string();
+	bserv::db_transaction tx{ conn };
+	auto opt_user = get_user(tx, username);
+	if (opt_user.has_value()) {											//判断该用户名是否已经注册过
+		return {
+			{"success", false},
+			{"message", "`username` existed"}
+		};
+	}
+	auto password = params["password"].as_string();
+	bserv::db_result r = tx.exec(
+		"insert into auth_user "
+		"(username, password, is_superuser, "
+		"first_name, last_name, email, is_active) values "
+		"(?, ?, ?, ?, ?, ?, ?)",
+		username,
+		bserv::utils::security::encode_password(
+			password.c_str()), false,
+		get_or_empty(params, "first_name"),
+		get_or_empty(params, "last_name"),
+		get_or_empty(params, "email"), true);
+	lginfo << r.query();
+	tx.commit(); // you must manually commit changes
+	return {
+		{"success", true},
+		{"message", "user registered"}
+	};
+}
+
+std::nullopt_t zb_register(																//注册（与页面相关部分）
+	bserv::request_type& request,
+	bserv::response_type& response,
+	boost::json::object&& params,
+	std::shared_ptr<bserv::db_connection> conn,
+	std::shared_ptr<bserv::session_type> session_ptr) {
+	boost::json::object context = zb_user_register(request, std::move(params), conn);
+	return index("zb_test.html", session_ptr, response, context);
+}
+
+std::nullopt_t zb_disable(
+	bserv::request_type& request,
+	bserv::response_type& response,
+	boost::json::object&& params,
+	std::shared_ptr<bserv::db_connection> conn,
+	std::shared_ptr<bserv::session_type> session_ptr) {
+	lgdebug << params << std::endl;
+	auto context = zb_user_disable(request, std::move(params), conn, session_ptr);
+	lginfo << "disable: " << context << std::endl;
+	return index("zb_test.html", session_ptr, response, context);
+}
+
+boost::json::object zb_user_disable(
+	bserv::request_type& request,
+	boost::json::object&& params,
+	std::shared_ptr<bserv::db_connection> conn,
+	std::shared_ptr<bserv::session_type> session_ptr) {
+	if (request.method() != boost::beast::http::verb::post) {
+		throw bserv::url_not_found_exception{};
+	}
+	if (params.count("username") == 0) {
+		return {
+			{"success", false},
+			{"message", "`username` is required"}
+		};
+	}
+	if (params.count("password") == 0) {
+		return {
+			{"success", false},
+			{"message", "`password` is required"}
+		};
+	}
+	auto username = params["username"].as_string();
+	bserv::db_transaction tx{ conn };
+	auto opt_user = get_user(tx, username);
+	if (!opt_user.has_value()) {
+		return {
+			{"success", false},
+			{"message", "invalid username/password"}
+		};
+	}
+	auto& user = opt_user.value();
+	if (!user["is_active"].as_bool()) {
+		return {
+			{"success", false},
+			{"message", "invalid username/password"}
+		};
+	}
+	auto password = params["password"].as_string();
+	auto encoded_password = user["password"].as_string();
+	if (!bserv::utils::security::check_password(
+		password.c_str(), encoded_password.c_str())) {
+		return {
+			{"success", false},
+			{"message", "invalid username/password"}
+		};
+	}
+
+	bserv::db_result r = tx.exec(
+		"update auth_user "
+		"set is_active = 'false'"
+		"where username = ?", username);
+	lginfo << r.query();
+	tx.commit();
+
+	bserv::session_type& session = *session_ptr;
+	if (session.count("user")) {
+		session.erase("user");
+	}
+
+	return {
+		{"success", true},
+		{"message", "disable successfully"}
+	};
+}
+
+std::nullopt_t zb_be_musician(
+	bserv::request_type& request,
+	bserv::response_type& response,
+	boost::json::object&& params,
+	std::shared_ptr<bserv::db_connection> conn,
+	std::shared_ptr<bserv::session_type> session_ptr) {
+	lgdebug << params << std::endl;
+	auto context = zb_musician_1(request, std::move(params), conn, session_ptr);
+	lginfo << "to be musician: " << context << std::endl;
+	return index("zb_test_UI.html", session_ptr, response, context);
+
+
+}
+
+boost::json::object zb_musician_1(
+	bserv::request_type& request,
+	boost::json::object&& params,
+	std::shared_ptr<bserv::db_connection> conn,
+	std::shared_ptr<bserv::session_type> session_ptr) {
+	bserv::session_type& session = *session_ptr;
+	if (!session.count("user")) {
+		return {
+			{"success", false},
+			{"message", "please login first"}
+		};
+	}
+	auto& now_user = session["user"].as_object();
+	auto username = now_user["username"].as_string();
+	bserv::db_transaction tx{ conn };
+	bserv::db_result r = tx.exec(
+		"update auth_user "
+		"set is_musician = '1' "
+		"where username = ?", username);
+	lginfo << r.query();
+	tx.commit(); // you must manually commit changes
+	return {
+		{"success", true},
+		{"message", "申请成为musician成功"}
+	};
 }

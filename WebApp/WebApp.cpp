@@ -142,6 +142,34 @@ int main(int argc, char* argv[]) {
 			bserv::placeholders::json_params,
 			bserv::placeholders::db_connection_ptr,
 			bserv::placeholders::session),
+
+
+
+//added by zb
+		bserv::make_path("/zb_test_mainpage", &zb_test_mainpage,
+			bserv::placeholders::session,
+			bserv::placeholders::response),
+		bserv::make_path("/zb_test_UI", &zb_test_UI,
+			bserv::placeholders::session,
+			bserv::placeholders::response),
+		bserv::make_path("/zb_register", &zb_register,
+			bserv::placeholders::request,
+			bserv::placeholders::response,
+			bserv::placeholders::json_params,
+			bserv::placeholders::db_connection_ptr,
+			bserv::placeholders::session),
+		bserv::make_path("/zb_disable", &zb_disable,
+			bserv::placeholders::request,
+			bserv::placeholders::response,
+			bserv::placeholders::json_params,
+			bserv::placeholders::db_connection_ptr,
+			bserv::placeholders::session),
+		bserv::make_path("/zb_be_musician", &zb_be_musician,
+			bserv::placeholders::request,
+			bserv::placeholders::response,
+			bserv::placeholders::json_params,
+			bserv::placeholders::db_connection_ptr,
+			bserv::placeholders::session),
 		}
 		, {
 			// websocket example
