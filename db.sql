@@ -17,7 +17,6 @@ CREATE TABLE music (
     music_id serial PRIMARY KEY,
     musician_id int references auth_user(id),
     music_name character varying(255) NOT NULL,
-    content_path character varying(255),
     music_path character varying(255) NOT NULL
 );
 CREATE TABLE comment (
