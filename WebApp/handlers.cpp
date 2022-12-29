@@ -261,11 +261,10 @@ boost::json::object add_music(
 	bserv::db_transaction tx{ conn };
 	bserv::db_result r = tx.exec(
 		"insert into ? "
-		"(musician_id, music_name, content_path, music_path)"
+		"(musician_id, music_name, music_path)"
 		"values (?, ?, ?, ?)", bserv::db_name("music"),
 		musician_id,
 		get_or_empty(params, "music_name"),
-		get_or_empty(params, "content_path"),
 		get_or_empty(params, "music_path"));
 	lginfo << r.query();
 	tx.commit(); // you must manually commit changes
@@ -531,4 +530,11 @@ std::nullopt_t form_add_music(
 	std::shared_ptr<bserv::session_type> session_ptr) {
 	boost::json::object context = add_music(request, std::move(params), conn, session_ptr);
 	return redirect_to_music_repo(conn, session_ptr, response, 1, std::move(context));
+}
+
+std::nullopt_t view_music(
+	std::shared_ptr<bserv::session_type> session_ptr,
+	bserv::response_type& response) {
+	boost::json::object context;
+	return index("music.html", session_ptr, response, context);
 }
