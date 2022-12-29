@@ -1,3 +1,7 @@
+DROP DATABASE IF EXISTS bserv;
+CREATE DATABASE bserv;
+\connect bserv
+
 CREATE TABLE auth_user (
     id serial PRIMARY KEY,
     username character varying(255) NOT NULL UNIQUE,
