@@ -45,4 +45,5 @@ dependencies
 examples
 test
 WebApp/x64
+/WebApp/music
 x64

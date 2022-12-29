@@ -7,7 +7,6 @@
 #include <optional>
 
 #include "bserv/common.hpp"
-
 std::nullopt_t hello(
     bserv::response_type& response,
     std::shared_ptr<bserv::session_type> session_ptr);

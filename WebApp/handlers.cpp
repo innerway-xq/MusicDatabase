@@ -4,6 +4,8 @@
 
 #include "rendering.h"
 
+#include <fstream>
+
 // register an orm mapping (to convert the db query results into
 // json objects).
 // the db query results contain several rows, each has a number of
@@ -24,14 +26,13 @@ bserv::db_relation_to_object orm_user{
 	bserv::make_db_field<std::string>("last_name"),
 	bserv::make_db_field<std::string>("email"),
 	bserv::make_db_field<bool>("is_active"),
-	bserv::make_db_field<bool>("is_musician")
+	bserv::make_db_field<int>("is_musician")
 };
 
 bserv::db_relation_to_object orm_music{
 	bserv::make_db_field<int>("music_id"),
 	bserv::make_db_field<int>("musician_id"),
 	bserv::make_db_field<std::string>("music_name"),
-	bserv::make_db_field<std::string>("content_path"),
 	bserv::make_db_field<std::string>("music_path"),
 };
 
@@ -226,7 +227,8 @@ boost::json::object add_music(
 	bserv::request_type& request,
 	boost::json::object&& params,
 	std::shared_ptr<bserv::db_connection> conn,
-	std::shared_ptr<bserv::session_type> session_ptr) {
+	std::shared_ptr<bserv::session_type> session_ptr,
+	bserv::response_type& response) {
 	if (request.method() != boost::beast::http::verb::post) {
 		throw bserv::url_not_found_exception{};
 	}
@@ -239,35 +241,77 @@ boost::json::object add_music(
 		};
 	}
 	auto& now_user = session["user"].as_object();
-	if (!now_user["is_musician"].as_bool()) {
+	if (now_user["is_musician"].as_int64() != 2) {
 		return {
 			{"success", false},
 			{"message", "not musician"}
 		};
 	}
 	auto musician_id = now_user["id"].as_int64();
-	if (params.count("music_name") == 0) {
+
+	std::string music_name = "", music_file = "", music_path = "";
+	std::stringstream ssdata(request.body());
+	std::string tmp;
+	for (int i = 0; i < 3; ++i)
+		std::getline(ssdata, tmp);
+	std::getline(ssdata, tmp);
+	music_name = tmp;
+	if (music_name[music_name.length()-1] == '\r')
+		music_name.erase(music_name.length()-1);
+	lginfo << music_name;
+	for (int i = 0; i < 3; ++i)
+		std::getline(ssdata, tmp);
+	std::getline(ssdata, tmp);
+	music_file = tmp.substr(12);
+	if (music_file[music_file.length()-1] == '\r')
+		music_file.erase(music_file.length()-1);
+	lginfo << music_file;
+	if (music_name == "") {
 		return {
 			{"success", false},
 			{"message", "`music_name` is required"}
 		};
 	}
-	if (params.count("music_file") == 0) {
+	if (music_file == "") {
 		return {
 			{"success", false},
 			{"message", "`music_file` is required"}
 		};
 	}
+
 	bserv::db_transaction tx{ conn };
+	bserv::db_result db_res = tx.exec("select last_value from music_music_id_seq;");
+	int seq = (*db_res.begin())[0].as<int>() + 1;
+	music_path = "./music/" + std::to_string(seq) + music_file.substr(music_file.find_last_of('.'));
+	lginfo << music_path;
+
 	bserv::db_result r = tx.exec(
 		"insert into ? "
 		"(musician_id, music_name, music_path)"
-		"values (?, ?, ?, ?)", bserv::db_name("music"),
+		"values (?, ?, ?)", bserv::db_name("music"),
 		musician_id,
-		get_or_empty(params, "music_name"),
-		get_or_empty(params, "music_path"));
+		music_name,
+		music_path);
 	lginfo << r.query();
 	tx.commit(); // you must manually commit changes
+
+	std::string file_data = request.body();
+	file_data = file_data.substr(file_data.find("Content-Type: "));
+	file_data = file_data.substr(file_data.find('\n')+1);
+	file_data = file_data.substr(file_data.find('\n')+1);
+
+	for (int i = 0; i < 2; ++i) {
+		int pos = file_data.find_last_of('\n');
+		file_data.erase(pos);
+	}
+	if (file_data[file_data.length() - 1] == '\r')
+		file_data.erase(file_data.length() - 1);
+
+	std::ofstream fout;
+	fout.open(music_path, std::ios::out | std::ios::binary);
+	for (char i : file_data)
+		fout << i;
+	fout.close();
 	return {
 		{"success", true},
 		{"message", "music added"}
@@ -528,7 +572,7 @@ std::nullopt_t form_add_music(
 	boost::json::object&& params,
 	std::shared_ptr<bserv::db_connection> conn,
 	std::shared_ptr<bserv::session_type> session_ptr) {
-	boost::json::object context = add_music(request, std::move(params), conn, session_ptr);
+	boost::json::object context = add_music(request, std::move(params), conn, session_ptr, response);
 	return redirect_to_music_repo(conn, session_ptr, response, 1, std::move(context));
 }
 

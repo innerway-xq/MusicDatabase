@@ -14,26 +14,36 @@
 <div class="modal fade" id="userModal" tabindex="-1" aria-labelledby="userModalLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
-      <form method="post" action="/form_add_music">
-        <div class="modal-header">
-          <h5 class="modal-title" id="userModalLabel">Add User</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      <div class="modal-header">
+        <h5 class="modal-title" id="userModalLabel">Add Music</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label for="music_name" class="form-label">Musicname</label>
+          <input type="text" class="form-control" id="music_name" name="music_name" placeholder="Musicname">
         </div>
-        <div class="modal-body">
-          <div class="mb-3">
-            <label for="music_name" class="form-label">Musicname</label>
-            <input type="text" class="form-control" id="music_name" name="music_name" placeholder="Musicname">
-          </div>
-          <div class="mb-3">
-            <label for="music_file" class="form-label">Music</label>
-            <input type="file" class="form-control" id="music_file" name="music_file">
-          </div>
+        <div class="mb-3">
+          <label for="music_file" class="form-label">Music(max size: 8MB)</label>
+          <input type="file" class="form-control" id="music_file" name="music_file">
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary">Add</button>
-        </div>
-      </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" onclick="upload()" class="btn btn-primary">Add</button>
+      </div>
+      <script src="https://cdn.bootcss.com/axios/0.19.2/axios.min.js"></script>
+      <script>
+        async function upload() {
+          const file = document.getElementById('music_file').files[0];
+          const data = new FormData();
+          data.append('music_name', document.getElementById('music_name').value);
+          data.append('music_file', document.getElementById("music_file").value);
+          data.append('file', file)
+          const response = await fetch(`/form_add_music`,
+            {method: 'POST',body: data});
+        }
+      </script>
     </div>
   </div>
 </div>
