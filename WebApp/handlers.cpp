@@ -631,6 +631,7 @@ std::nullopt_t redirect_to_music(
 	int music_id,
 	boost::json::object&& context) {
 	lgdebug << "view music: " << music_id << std::endl;
+	load_music(conn, session_ptr, music_id, context);
 	bserv::db_transaction tx{ conn };
 	bserv::db_result db_res = tx.exec("select comment_id, username, comment_time, comment_content"
 		" from comment join auth_user on comment.user_id=auth_user.id where music_id = ?;", music_id);
@@ -691,7 +692,6 @@ std::nullopt_t view_music(
 	bserv::response_type& response,
 	const std::string& music_id) {
 	boost::json::object context;
-	load_music(conn, session_ptr, std::stoi(music_id), context);
 	return redirect_to_music(conn, session_ptr, response, std::stoi(music_id), std::move(context));
 }
 
@@ -703,6 +703,49 @@ std::nullopt_t form_post_comment(
 	std::shared_ptr<bserv::session_type> session_ptr) {
 	int music_id;
 	boost::json::object context = post_comment(request, conn, session_ptr, std::move(params), music_id);
-	load_music(conn, session_ptr, music_id, context);
 	return redirect_to_music(conn, session_ptr, response, music_id, std::move(context));
+}
+
+std::nullopt_t form_delete_comment(
+	bserv::request_type& request,
+	bserv::response_type& response,
+	boost::json::object&& params,
+	std::shared_ptr<bserv::db_connection> conn,
+	std::shared_ptr<bserv::session_type> session_ptr) {
+	boost::json::object context;
+	lgdebug << request.body();
+	lgdebug << params;
+	//检查是否为评论作者或者superuser
+	bserv::session_type& session = *session_ptr;
+	if (!session.count("user")) {
+		context = {
+			{"success", false},
+			{"message", "please login first"}
+		};
+		return redirect_to_music(conn, session_ptr, response, session["music"].as_object()["music_id"].as_int64(), std::move(context));
+	}
+	auto& now_user = session["user"].as_object();
+	std::string str_comment_id = get_or_empty(params, "delete_comment");
+	lgdebug << "delete: " << str_comment_id;
+	int comment_id = std::stoi(str_comment_id);
+	bserv::db_transaction tx{ conn };
+	bserv::db_result db_res = tx.exec("select user_id from comment where comment_id = ?;", comment_id);
+	lginfo << db_res.query();
+	int comment_user_id = (*db_res.begin())[0].as<int>();
+	if (!(now_user["id"].as_int64() == comment_user_id || now_user["is_superuser"].as_bool())) {
+		context = {
+			{"success", false},
+			{"message", "not allowed"}
+		};
+		tx.abort();
+		return redirect_to_music(conn, session_ptr, response, session["music"].as_object()["music_id"].as_int64(), std::move(context));
+	}
+	db_res = tx.exec("delete from comment where comment_id=?;", comment_id);
+	lginfo << db_res.query();
+	context = {
+		{"success", true},
+		{"message", "comment deleted"}
+	};
+	tx.commit();
+	return redirect_to_music(conn, session_ptr, response, session["music"].as_object()["music_id"].as_int64(), std::move(context));
 }

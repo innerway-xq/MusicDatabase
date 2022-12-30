@@ -153,6 +153,12 @@ int main(int argc, char* argv[]) {
 			bserv::placeholders::json_params,
 			bserv::placeholders::db_connection_ptr,
 			bserv::placeholders::session),
+		bserv::make_path("/form_delete_comment", &form_delete_comment,
+			bserv::placeholders::request,
+			bserv::placeholders::response,
+			bserv::placeholders::json_params,
+			bserv::placeholders::db_connection_ptr,
+			bserv::placeholders::session),
 		}
 		, {
 			// websocket example

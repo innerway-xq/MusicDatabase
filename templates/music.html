@@ -106,7 +106,8 @@
           <div class="row">
             <p class="col fs-6">{{ comment.comment_time }}</p>
             <p class="col fs-6">#{{ comment.comment_id }}</p>
-            <button type="button" class="btn btn-outline-info" style="width: 100px;">Delete</button>
+            <a class="btn btn-outline-info" style="width: 100px;"
+              type="submit" href="/form_delete_comment?delete_comment={{ comment.comment_id }}">Delete</a>
           </div>
       </li>
       {% endfor %}
@@ -116,5 +117,10 @@
 <script src='//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js'></script>
 <script src="/statics/js/comment.js"></script>
 
-
+<script>
+  async function deleteComment(comment_id) {
+    let response = await fetch(`/form_delete_comment`,
+    {method: 'POST', body: comment_id});
+  }
+</script>
 {% endblock %}
