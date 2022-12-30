@@ -5,9 +5,11 @@
 {% block music_active %}active{% endblock %}
 
 {% block content %}
+<link rel="stylesheet" href="/statics/css/comment.css">
 <link rel='stylesheet'
   href='https://michael-zhigulin.github.io/mz-codepen-projects/Material%20Design%20UI%20Audio%20Player/font/font.css'>
 <link rel="stylesheet" href="/statics/css/audioplayer.css">
+
 
 <div class="container">
   <div class="player">
@@ -16,13 +18,13 @@
     </div>
     <div class="mask"></div>
     <ul class="player-info info-one">
-      <li>{{music_name}}</li>
-      <li>{{musician}}</li>
+      <li>{{music.music_name}}</li>
+      <li>{{music.musician}}</li>
       <li id="info-one-duration">undefined</li>
     </ul>
     <ul class="player-info info-two">
-      <li>{{music_name}}</li>
-      <li>{{musician}}</li>
+      <li>{{music.music_name}}</li>
+      <li>{{music.musician}}</li>
       <li><span id="duration"></span><i> / </i><span id="info-two-duration">undefined</span></li>
     </ul>
     <div id="play-button" class="unchecked">
@@ -49,9 +51,8 @@
   </div>
 </div>
 <audio id="audio-player" onloadedmetadata="LoadMetadata()" ontimeupdate="SeekBar()" ondurationchange="CreateSeekBar()" preload="auto">
-  <source src={{ music_path }} type="audio/mpeg">
+  <source src={{ music.music_path }} type="audio/mpeg">
 </audio>
-<!-- partial -->
 <script src='https://code.jquery.com/jquery-2.1.1.min.js'></script>
 <script src='https://cdnjs.cloudflare.com/ajax/libs/node-waves/0.7.5/waves.min.js'></script>
 <script src="/statics/js/audioplayer.js"></script>
@@ -65,4 +66,55 @@
     document.getElementById("info-two-duration").innerHTML = duration;
   }
 </script>
+
+<br><br>
+<h3 class="heading">Add A Comment Below</h3>
+
+<body>
+  <div class="container">
+    <form method="post" action="/form_post_comment">
+      <div class="form-floating">
+        <textarea type="text" class="form-control" placeholder="Leave a comment here" id="comment_box" name="comment_box"
+          style="height: 100px"></textarea>
+        <label for="comment_box">Comments</label>
+      </div>
+      <div class="container text-center">
+        <div class="row justify-content-end">
+          <div class="col-1 align-self-center">
+            <p class="counter">250</p>
+          </div>
+          <div class="col-1">
+            <button type="submit" class="btn btn-primary">Post</button>
+          </div>
+        </div>
+      </div>
+    </form>
+    <script>
+      async function postComment(){
+        comment = document.getElementById("comment_box").value;
+        let response = await fetch('/form_post_comment',{method:'POST', body:comment});
+      }
+    </script>
+    <ul class="posts">
+      {% for comment in comments %}
+      <li>
+        <div class="col">
+          <div class="badge bg-primary text-wrap" style="margin-bottom: 20px; font-size: medium;">
+            {{comment.username}}
+          </div>
+          <p class="fs-4" style="margin-left: 20px;">{{comment.comment_content}}</p>
+          <div class="row">
+            <p class="col fs-6">{{ comment.comment_time }}</p>
+            <p class="col fs-6">#{{ comment.comment_id }}</p>
+            <button type="button" class="btn btn-outline-info" style="width: 100px;">Delete</button>
+          </div>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+</body>
+<script src='//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js'></script>
+<script src="/statics/js/comment.js"></script>
+
+
 {% endblock %}

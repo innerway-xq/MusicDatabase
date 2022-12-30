@@ -42,8 +42,7 @@
   <thead>
     <tr>
       <th scope="col">#</th>
-      <th scope="col">music_id</th>
-      <th scope="col">musician_id</th>
+      <th scope="col">musician</th>
       <th scope="col">music_name</th>
     </tr>
   </thead>
@@ -51,13 +50,13 @@
     {% for music in music_repo %}
     <tr style="vertical-align: middle;">
       <th scope="row">{{ loop.index1 }}</th>
-      <td>{{ music.music_id }}</td>
-      <td>{{ music.musician_id }}</td>
-      <td>{{ music.music_name }}</td>
+      <td>{{ music.musician }}</td>
+      <td><a class="btn-link" type="button" href="/music/{{ music.music_id}}">{{ music.music_name }}</a></td>
     </tr>
     {% endfor %}
   </tbody>
 </table>
+
 
 {% if exists("pagination") %}
 <ul class="pagination">

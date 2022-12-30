@@ -31,10 +31,17 @@ bserv::db_relation_to_object orm_user{
 
 bserv::db_relation_to_object orm_music{
 	bserv::make_db_field<int>("music_id"),
-	bserv::make_db_field<int>("musician_id"),
+	bserv::make_db_field<std::string>("musician"),
 	bserv::make_db_field<std::string>("music_name"),
 	bserv::make_db_field<std::string>("music_path"),
 	bserv::make_db_field<bool>("is_active")
+};
+
+bserv::db_relation_to_object orm_comment{
+	bserv::make_db_field<int>("comment_id"),
+	bserv::make_db_field<std::string>("username"),
+	bserv::make_db_field<std::string>("comment_time"),
+	bserv::make_db_field<std::string>("comment_content"),
 };
 
 std::optional<boost::json::object> get_user(
@@ -124,7 +131,7 @@ boost::json::object user_register(
 		"insert into ? "
 		"(?, password, is_superuser, "
 		"first_name, last_name, email, is_active) values "
-		"(?, ?, ?, ?, ?, ?, ?)", bserv::db_name("auth_user"),
+		"(?, ?, ?, ?, ?, ?, ?);", bserv::db_name("auth_user"),
 		bserv::db_name("username"),
 		username,
 		bserv::utils::security::encode_password(
@@ -290,7 +297,7 @@ boost::json::object add_music(
 	bserv::db_result r = tx.exec(
 		"insert into ? "
 		"(musician_id, music_name, music_path)"
-		"values (?, ?, ?)", bserv::db_name("music"),
+		"values (?, ?, ?);", bserv::db_name("music"),
 		musician_id,
 		music_name,
 		music_file);
@@ -323,11 +330,13 @@ boost::json::object add_music(
 boost::json::object load_music(
 	std::shared_ptr<bserv::db_connection> conn,
 	std::shared_ptr<bserv::session_type> session_ptr,
-	int music_id) {
-	boost::json::object context;
+	int music_id,
+	boost::json::object &context) {
+	boost::json::object json_music;
 	bserv::db_transaction tx{ conn };
 	bserv::db_result db_res;
-	db_res = tx.exec("select * from music where music_id = ?;", music_id);
+	db_res = tx.exec("select music_id, username musician, music_name, music_path, music.is_active"
+		" from music join auth_user on music.musician_id=auth_user.id where music_id = ?;", music_id);
 	lginfo << db_res.query();
 	auto opt_music = orm_music.convert_to_optional(db_res);
 	if (!opt_music.has_value()) {
@@ -344,17 +353,56 @@ boost::json::object load_music(
 		};
 	}
 	lgdebug << "music_name: " << music["music_name"].as_string();
-	context["music_name"] = music["music_name"].as_string();
-	db_res = tx.exec("select username from auth_user where id = ?;", music["musician_id"].as_int64());
-	lginfo << db_res.query();
-	auto musician = (*db_res.begin())[0].as<std::string>();
-	lgdebug << "musician: " << musician;
-	context["musician"] = musician;
+	json_music["music_name"] = music["music_name"].as_string();
+	lgdebug << "musician: " << music["musician"];
+	json_music["musician"] = music["musician"];
 	std::string music_path = "/statics/musics/";
 	music_path += music["music_path"].as_string();
 	lgdebug << "music_path: " << music_path;
-	context["music_path"] = music_path;
+	json_music["music_path"] = music_path;
+	json_music["music_id"] = music["music_id"].as_int64();
+	bserv::session_type& session = *session_ptr;
+	lgdebug << json_music;
+	session["music"] = json_music;
+	context["music"] = json_music;
 	return context;
+}
+
+boost::json::object post_comment(
+	bserv::request_type& request,
+	std::shared_ptr<bserv::db_connection> conn,
+	std::shared_ptr<bserv::session_type> session_ptr,
+	boost::json::object&& params,
+	int& music_id) {
+	if (request.method() != boost::beast::http::verb::post) {
+		throw bserv::url_not_found_exception{};
+	}
+	bserv::session_type& session = *session_ptr;
+	boost::json::object json_music = session["music"].as_object();
+	music_id = json_music["music_id"].as_int64();
+	if (!session.count("user")) {
+		return {
+			{"success", false},
+			{"message", "please login first"}
+		};
+	}
+	boost::json::object json_user = session["user"].as_object();
+	int user_id = json_user["id"].as_int64();
+	std::time_t now = std::time(NULL);
+	bserv::db_transaction tx{ conn };
+	bserv::db_result r = tx.exec(
+		"insert into comment(user_id, music_id, comment_time, comment_content) values "
+		"(?, ?, to_timestamp(?), ?);",
+		user_id,
+		music_id,
+		now,
+		get_or_empty(params, "comment_box"));
+	lginfo << r.query();
+	tx.commit();
+	return {
+		{"success", true},
+		{"message", "comment posted"}
+	};
 }
 
 boost::json::object send_request(
@@ -583,6 +631,17 @@ std::nullopt_t redirect_to_music(
 	int music_id,
 	boost::json::object&& context) {
 	lgdebug << "view music: " << music_id << std::endl;
+	bserv::db_transaction tx{ conn };
+	bserv::db_result db_res = tx.exec("select comment_id, username, comment_time, comment_content"
+		" from comment join auth_user on comment.user_id=auth_user.id where music_id = ?;", music_id);
+	lginfo << db_res.query();
+	auto comments = orm_comment.convert_to_vector(db_res);
+	boost::json::array json_comments;
+	for (auto& comment : comments) {
+		lgdebug << comment;
+		json_comments.push_back(comment);
+	}
+	context["comments"] = json_comments;
 	return index("music.html", session_ptr, response, context);
 }
 
@@ -631,6 +690,19 @@ std::nullopt_t view_music(
 	std::shared_ptr<bserv::session_type> session_ptr,
 	bserv::response_type& response,
 	const std::string& music_id) {
-	boost::json::object context = load_music(conn, session_ptr, std::stoi(music_id));
+	boost::json::object context;
+	load_music(conn, session_ptr, std::stoi(music_id), context);
 	return redirect_to_music(conn, session_ptr, response, std::stoi(music_id), std::move(context));
+}
+
+std::nullopt_t form_post_comment(
+	bserv::request_type& request,
+	bserv::response_type& response,
+	boost::json::object&& params,
+	std::shared_ptr<bserv::db_connection> conn,
+	std::shared_ptr<bserv::session_type> session_ptr) {
+	int music_id;
+	boost::json::object context = post_comment(request, conn, session_ptr, std::move(params), music_id);
+	load_music(conn, session_ptr, music_id, context);
+	return redirect_to_music(conn, session_ptr, response, music_id, std::move(context));
 }
