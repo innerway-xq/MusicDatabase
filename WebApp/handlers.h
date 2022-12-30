@@ -88,5 +88,7 @@ std::nullopt_t form_add_music(
     std::shared_ptr<bserv::session_type> session_ptr);
 
 std::nullopt_t view_music(
+    std::shared_ptr<bserv::db_connection> conn,
     std::shared_ptr<bserv::session_type> session_ptr,
-    bserv::response_type& response);
+    bserv::response_type& response,
+    const std::string& music_id);

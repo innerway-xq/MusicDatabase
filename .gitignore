@@ -45,5 +45,5 @@ dependencies
 examples
 test
 WebApp/x64
-/WebApp/music
+templates/statics/musics
 x64

@@ -36,7 +36,7 @@ int main(int argc, char* argv[]) {
 	if (argc == 2) {
 		try {
 			std::string config_content = bserv::utils::file::read_bin(argv[1]);
-			//std::cout << config_content << std::endl;
+			std::cout << config_content << std::endl;
 			boost::json::object config_obj = boost::json::parse(config_content).as_object();
 			if (config_obj.contains("port"))
 				config.set_port((unsigned short)config_obj["port"].as_int64());
@@ -142,9 +142,11 @@ int main(int argc, char* argv[]) {
 			bserv::placeholders::json_params,
 			bserv::placeholders::db_connection_ptr,
 			bserv::placeholders::session),
-		bserv::make_path("/music", &view_music,
+		bserv::make_path("/music/<int>", &view_music,
+			bserv::placeholders::db_connection_ptr,
 			bserv::placeholders::session,
-			bserv::placeholders::response),
+			bserv::placeholders::response,
+			bserv::placeholders::_1),
 		}
 		, {
 			// websocket example

@@ -283,7 +283,8 @@ boost::json::object add_music(
 	int seq = 1;
 	if((*db_res.begin())[2].as<bool>())
 		seq = (*db_res.begin())[0].as<int>() + 1;
-	music_path = "./music/" + std::to_string(seq) + music_file.substr(music_file.find_last_of('.'));
+	music_file = std::to_string(seq) + music_file.substr(music_file.find_last_of('.'));
+	music_path = "../templates/statics/musics/" + music_file;
 	lgdebug << "music_path: " << music_path;
 
 	bserv::db_result r = tx.exec(
@@ -292,7 +293,7 @@ boost::json::object add_music(
 		"values (?, ?, ?)", bserv::db_name("music"),
 		musician_id,
 		music_name,
-		music_path);
+		music_file);
 	lginfo << r.query();
 	tx.commit(); // you must manually commit changes
 
@@ -317,6 +318,43 @@ boost::json::object add_music(
 		{"success", true},
 		{"message", "music added"}
 	};
+}
+
+boost::json::object load_music(
+	std::shared_ptr<bserv::db_connection> conn,
+	std::shared_ptr<bserv::session_type> session_ptr,
+	int music_id) {
+	boost::json::object context;
+	bserv::db_transaction tx{ conn };
+	bserv::db_result db_res;
+	db_res = tx.exec("select * from music where music_id = ?;", music_id);
+	lginfo << db_res.query();
+	auto opt_music = orm_music.convert_to_optional(db_res);
+	if (!opt_music.has_value()) {
+		return {
+			{"success", false},
+			{"message", "no such music"}
+		};
+	}
+	auto& music = opt_music.value();
+	if (!music["is_active"].as_bool()) {
+		return {
+			{"success", false},
+			{"message", "no such music"}
+		};
+	}
+	lgdebug << "music_name: " << music["music_name"].as_string();
+	context["music_name"] = music["music_name"].as_string();
+	db_res = tx.exec("select username from auth_user where id = ?;", music["musician_id"].as_int64());
+	lginfo << db_res.query();
+	auto musician = (*db_res.begin())[0].as<std::string>();
+	lgdebug << "musician: " << musician;
+	context["musician"] = musician;
+	std::string music_path = "/statics/musics/";
+	music_path += music["music_path"].as_string();
+	lgdebug << "music_path: " << music_path;
+	context["music_path"] = music_path;
+	return context;
 }
 
 boost::json::object send_request(
@@ -370,6 +408,7 @@ std::nullopt_t ws_echo(
 std::nullopt_t serve_static_files(
 	bserv::response_type& response,
 	const std::string& path) {
+	response.set(bserv::http::field::accept_ranges, "bytes");
 	return serve(response, path);
 }
 
@@ -537,6 +576,16 @@ std::nullopt_t redirect_to_music_repo(
 	return index("music_repo.html", session_ptr, response, context);
 }
 
+std::nullopt_t redirect_to_music(
+	std::shared_ptr<bserv::db_connection> conn,
+	std::shared_ptr<bserv::session_type> session_ptr,
+	bserv::response_type& response,
+	int music_id,
+	boost::json::object&& context) {
+	lgdebug << "view music: " << music_id << std::endl;
+	return index("music.html", session_ptr, response, context);
+}
+
 std::nullopt_t view_users(
 	std::shared_ptr<bserv::db_connection> conn,
 	std::shared_ptr<bserv::session_type> session_ptr,
@@ -578,8 +627,10 @@ std::nullopt_t form_add_music(
 }
 
 std::nullopt_t view_music(
+	std::shared_ptr<bserv::db_connection> conn,
 	std::shared_ptr<bserv::session_type> session_ptr,
-	bserv::response_type& response) {
-	boost::json::object context;
-	return index("music.html", session_ptr, response, context);
+	bserv::response_type& response,
+	const std::string& music_id) {
+	boost::json::object context = load_music(conn, session_ptr, std::stoi(music_id));
+	return redirect_to_music(conn, session_ptr, response, std::stoi(music_id), std::move(context));
 }
