@@ -34,6 +34,7 @@ bserv::db_relation_to_object orm_music{
 	bserv::make_db_field<int>("musician_id"),
 	bserv::make_db_field<std::string>("music_name"),
 	bserv::make_db_field<std::string>("music_path"),
+	bserv::make_db_field<bool>("is_active")
 };
 
 std::optional<boost::json::object> get_user(
@@ -97,13 +98,13 @@ boost::json::object user_register(
 	if (request.method() != boost::beast::http::verb::post) {
 		throw bserv::url_not_found_exception{};
 	}
-	if (params.count("username") == 0) {
+	if (params.count("username") == 0 || params["username"].as_string() == "") {
 		return {
 			{"success", false},
 			{"message", "`username` is required"}
 		};
 	}
-	if (params.count("password") == 0) {
+	if (params.count("password") == 0 || params["password"].as_string() == "") {
 		return {
 			{"success", false},
 			{"message", "`password` is required"}
@@ -227,8 +228,7 @@ boost::json::object add_music(
 	bserv::request_type& request,
 	boost::json::object&& params,
 	std::shared_ptr<bserv::db_connection> conn,
-	std::shared_ptr<bserv::session_type> session_ptr,
-	bserv::response_type& response) {
+	std::shared_ptr<bserv::session_type> session_ptr) {
 	if (request.method() != boost::beast::http::verb::post) {
 		throw bserv::url_not_found_exception{};
 	}
@@ -258,14 +258,13 @@ boost::json::object add_music(
 	music_name = tmp;
 	if (music_name[music_name.length()-1] == '\r')
 		music_name.erase(music_name.length()-1);
-	lginfo << music_name;
-	for (int i = 0; i < 3; ++i)
-		std::getline(ssdata, tmp);
+	lgdebug << "music_name: " << music_name;
 	std::getline(ssdata, tmp);
-	music_file = tmp.substr(12);
-	if (music_file[music_file.length()-1] == '\r')
-		music_file.erase(music_file.length()-1);
-	lginfo << music_file;
+	std::getline(ssdata, tmp);
+	tmp.erase(tmp.find_last_of('\"'));
+	tmp = tmp.substr(tmp.find_last_of('\"')+1);
+	music_file = tmp;
+	lgdebug << music_file;
 	if (music_name == "") {
 		return {
 			{"success", false},
@@ -280,10 +279,12 @@ boost::json::object add_music(
 	}
 
 	bserv::db_transaction tx{ conn };
-	bserv::db_result db_res = tx.exec("select last_value from music_music_id_seq;");
-	int seq = (*db_res.begin())[0].as<int>() + 1;
+	bserv::db_result db_res = tx.exec("select * from music_music_id_seq;");
+	int seq = 1;
+	if((*db_res.begin())[2].as<bool>())
+		seq = (*db_res.begin())[0].as<int>() + 1;
 	music_path = "./music/" + std::to_string(seq) + music_file.substr(music_file.find_last_of('.'));
-	lginfo << music_path;
+	lgdebug << "music_path: " << music_path;
 
 	bserv::db_result r = tx.exec(
 		"insert into ? "
@@ -482,14 +483,14 @@ std::nullopt_t redirect_to_music_repo(
 	boost::json::object&& context) {
 	lgdebug << "view music_repo: " << page_id << std::endl;
 	bserv::db_transaction tx{ conn };
-	bserv::db_result db_res = tx.exec("select count(*) from music;");
+	bserv::db_result db_res = tx.exec("select count(*) from music where is_active = true;");
 	lginfo << db_res.query();
 	std::size_t total_music_repo = (*db_res.begin())[0].as<std::size_t>();
 	lgdebug << "total music_repo: " << total_music_repo << std::endl;
 	int total_pages = (int)total_music_repo / 10;
 	if (total_music_repo % 10 != 0) ++total_pages;
 	lgdebug << "total pages: " << total_pages << std::endl;
-	db_res = tx.exec("select * from music limit 10 offset ?;", (page_id - 1) * 10);
+	db_res = tx.exec("select * from music where is_active = true limit 10 offset ?;", (page_id - 1) * 10);
 	lginfo << db_res.query();
 	auto music_repo = orm_music.convert_to_vector(db_res);
 	boost::json::array json_music_repo;
@@ -572,7 +573,7 @@ std::nullopt_t form_add_music(
 	boost::json::object&& params,
 	std::shared_ptr<bserv::db_connection> conn,
 	std::shared_ptr<bserv::session_type> session_ptr) {
-	boost::json::object context = add_music(request, std::move(params), conn, session_ptr, response);
+	boost::json::object context = add_music(request, std::move(params), conn, session_ptr);
 	return redirect_to_music_repo(conn, session_ptr, response, 1, std::move(context));
 }
 
