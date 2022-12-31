@@ -27,7 +27,7 @@ CREATE TABLE comment (
     comment_time timestamp NOT NULL,
     comment_content character varying(1023)
 );
-CREATE TABLE favoriate (
+CREATE TABLE favorite (
     user_id int references auth_user(id),
     music_id int references music(music_id),
     create_time timestamp NOT NULL,
