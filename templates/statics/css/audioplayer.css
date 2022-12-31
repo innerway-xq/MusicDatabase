@@ -12,7 +12,10 @@ body {
 .player {
   position: relative;
   background-color: #000000;
-  background-image: url("/statics/images/background.jpg");
+  background-image: url("/statics/images/apple-music-note.jpg");
+  background-position-y: top;
+  background-position-x: center;
+  background-size: 40%;
   background-repeat: no-repeat;
   top: -20px;
   width: 100%;
