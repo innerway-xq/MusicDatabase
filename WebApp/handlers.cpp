@@ -247,7 +247,9 @@ boost::json::object add_music(
 			{"message", "please login first"}
 		};
 	}
-	auto& now_user = session["user"].as_object();
+	bserv::db_transaction tx{ conn };
+	auto opt_now_user = get_user(tx, session["user"].as_object()["username"].as_string());
+	auto& now_user = opt_now_user.value();
 	if (now_user["is_musician"].as_int64() != 2) {
 		return {
 			{"success", false},
@@ -285,7 +287,6 @@ boost::json::object add_music(
 		};
 	}
 
-	bserv::db_transaction tx{ conn };
 	bserv::db_result db_res = tx.exec("select * from music_music_id_seq;");
 	int seq = 1;
 	if((*db_res.begin())[2].as<bool>())
@@ -737,11 +738,12 @@ std::nullopt_t form_delete_comment(
 		};
 		return redirect_to_music(conn, session_ptr, response, session["music"].as_object()["music_id"].as_int64(), std::move(context));
 	}
-	auto& now_user = session["user"].as_object();
+	bserv::db_transaction tx{ conn };
+	auto opt_now_user = get_user(tx, session["user"].as_object()["username"].as_string());
+	auto& now_user = opt_now_user.value();
 	std::string str_comment_id = get_or_empty(params, "delete_comment");
 	lgdebug << "delete: " << str_comment_id;
 	int comment_id = std::stoi(str_comment_id);
-	bserv::db_transaction tx{ conn };
 	bserv::db_result db_res = tx.exec("select user_id from comment where comment_id = ?;", comment_id);
 	lginfo << db_res.query();
 	int comment_user_id = (*db_res.begin())[0].as<int>();
