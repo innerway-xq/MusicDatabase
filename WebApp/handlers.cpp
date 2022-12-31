@@ -682,7 +682,7 @@ std::nullopt_t redirect_to_profile(
 	auto& user = opt_user.value();
 	session["user"] = user;
 	bserv::db_result db_res = tx.exec("select favorite.music_id, username, music_name, music_path, music.is_active"
-		" from favorite join auth_user on favorite.user_id=auth_user.id join music on favorite.music_id=music.music_id"
+		" from favorite join music on favorite.music_id=music.music_id join auth_user on music.musician_id=auth_user.id"
 		" where user_id = ? and music.is_active=true order by create_time desc;", user["id"].as_int64());
 	lginfo << db_res.query();
 	auto favorite = orm_music.convert_to_vector(db_res);
