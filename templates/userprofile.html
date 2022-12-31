@@ -53,6 +53,8 @@
           Apply sended
         </button>
       </td>
+      {% else %}
+        <td scope="row" style="text-align: right;"></td>
       {% endif %} 
       {% if user.is_superuser %}
       <td>
@@ -123,5 +125,24 @@
     </div>
   </div>
 </div>
+
+<table class="table">
+  <thead>
+    <tr>
+      <th scope="col"><b>Favorite</b></th>
+      <th scope="col">musician</th>
+      <th scope="col">music_name</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for music in favorite %}
+    <tr style="vertical-align: middle;">
+      <th scope="row">{{ loop.index1 }}</th>
+      <td>{{ music.musician }}</td>
+      <td><a class="btn-link" type="button" href="/music/{{ music.music_id}}">{{ music.music_name }}</a></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
 
 {% endif %}

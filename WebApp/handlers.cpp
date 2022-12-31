@@ -679,7 +679,16 @@ std::nullopt_t redirect_to_profile(
 	bserv::db_transaction tx{ conn };
 	auto opt_user = get_user(tx, now_username);
 	auto& user = opt_user.value();
-	session["user"] = user;
+	bserv::db_result db_res = tx.exec("select favorite.music_id, username, music_name, music_path, music.is_active"
+		" from favorite join auth_user on favorite.user_id=auth_user.id join music on favorite.music_id=music.music_id"
+		" where user_id = ? and music.is_active=true order by create_time desc;", user["id"].as_int64());
+	lginfo << db_res.query();
+	auto favorite = orm_music.convert_to_vector(db_res);
+	boost::json::array json_favorite;
+	for (auto& music : favorite) {
+		json_favorite.push_back(music);
+	}
+	context["favorite"] = json_favorite;
 	return index("userprofile.html", session_ptr, response, context);
 }
 

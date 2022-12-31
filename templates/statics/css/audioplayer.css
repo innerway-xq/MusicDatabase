@@ -12,7 +12,7 @@ body {
 .player {
   position: relative;
   background-color: #000000;
-  background-image: url("https://michael-zhigulin.github.io/mz-codepen-projects/Material%20Design%20UI%20Audio%20Player/tim_minchin_piano.jpg");
+  background-image: url("/statics/images/background.jpg");
   background-repeat: no-repeat;
   top: -20px;
   width: 100%;
