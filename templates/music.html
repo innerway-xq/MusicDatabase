@@ -78,7 +78,7 @@
 
 <body>
   <div class="container">
-    <form method="post" action="/form_post_comment">
+    <!-- <form method="post" action="/form_post_comment"> -->
       <div class="form-floating">
         <textarea type="text" class="form-control" placeholder="Leave a comment here" id="comment_box" name="comment_box"
           style="height: 100px"></textarea>
@@ -90,16 +90,18 @@
             <p class="counter">250</p>
           </div>
           <div class="col-1">
-            <button type="submit" class="btn btn-primary">Post</button>
+            <button onclick="postComment()" class="btn btn-primary">Post</button>
           </div>
         </div>
       </div>
-    </form>
+    <!-- </form> -->
     <script>
       async function postComment(){
         comment = document.getElementById("comment_box").value;
         let response = await fetch('/form_post_comment',{method:'POST', body:comment});
+        location.reload();
       }
+
     </script>
     <ul class="posts">
       {% for comment in comments %}

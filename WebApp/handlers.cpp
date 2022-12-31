@@ -396,7 +396,7 @@ boost::json::object post_comment(
 		user_id,
 		music_id,
 		now,
-		get_or_empty(params, "comment_box"));
+		request.body());
 	lginfo << r.query();
 	tx.commit();
 	return {
