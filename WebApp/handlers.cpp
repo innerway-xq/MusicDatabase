@@ -230,7 +230,6 @@ boost::json::object add_music(
 	if (request.method() != boost::beast::http::verb::post) {
 		throw bserv::url_not_found_exception{};
 	}
-	//检查是否为musician
 	bserv::session_type& session = *session_ptr;
 	if (!session.count("user")) {
 		return {
@@ -493,6 +492,28 @@ std::nullopt_t redirect_to_music_repo(
 	return index("music_repo.html", session_ptr, response, context);
 }
 
+std::nullopt_t redirect_to_profile(
+	std::shared_ptr<bserv::db_connection> conn,
+	std::shared_ptr<bserv::session_type> session_ptr,
+	bserv::response_type& response,
+	boost::json::object&& context) {
+	bserv::session_type& session = *session_ptr;
+	if (!session.count("user")) {
+		context = {
+			{"success", false},
+			{"message", "please login first"}
+		};
+		return index("userprofile.html", session_ptr, response, context);
+	}
+	auto& now_user = session["user"].as_object();
+	auto now_username = now_user["username"].as_string();
+	bserv::db_transaction tx{ conn };
+	auto opt_user = get_user(tx, now_username);
+	auto& user = opt_user.value();
+	session["user"] = user;
+	return index("userprofile.html", session_ptr, response, context);
+}
+
 std::nullopt_t view_users(
 	std::shared_ptr<bserv::db_connection> conn,
 	std::shared_ptr<bserv::session_type> session_ptr,
@@ -510,7 +531,7 @@ std::nullopt_t form_add_user(
 	std::shared_ptr<bserv::db_connection> conn,
 	std::shared_ptr<bserv::session_type> session_ptr) {
 	boost::json::object context = user_register(request, std::move(params), conn);
-	return redirect_to_users(conn, session_ptr, response, 1, std::move(context));
+	return index("index.html", session_ptr, response, context);
 }
 
 std::nullopt_t view_music_repo(
@@ -533,83 +554,16 @@ std::nullopt_t form_add_music(
 	return redirect_to_music_repo(conn, session_ptr, response, 1, std::move(context));
 }
 
-
-
-
-
-
-
-// added by zb
-std::nullopt_t zb_home(											//主页面
+std::nullopt_t view_profile(											
+	std::shared_ptr<bserv::db_connection> conn,
 	std::shared_ptr<bserv::session_type> session_ptr,
 	bserv::response_type& response) {
 	boost::json::object context;
-	return index("home.html", session_ptr, response, context);
+	return redirect_to_profile(conn, session_ptr, response, std::move(context));
 }
 
 
-
-boost::json::object zb_user_register(										//注册（与数据库连接部分）
-	bserv::request_type& request,
-	// the json object is obtained from the request body,
-	// as well as the url parameters
-	boost::json::object&& params,
-	std::shared_ptr<bserv::db_connection> conn) {
-	if (request.method() != boost::beast::http::verb::post) {
-		throw bserv::url_not_found_exception{};
-	}
-	if (params.count("username") == 0) {
-		return {
-			{"success", false},
-			{"message", "`username` is required"}
-		};
-	}
-	if (params.count("password") == 0) {
-		return {
-			{"success", false},
-			{"message", "`password` is required"}
-		};
-	}
-	auto username = params["username"].as_string();
-	bserv::db_transaction tx{ conn };
-	auto opt_user = get_user(tx, username);
-	if (opt_user.has_value()) {											//判断该用户名是否已经注册过
-		return {
-			{"success", false},
-			{"message", "`username` existed"}
-		};
-	}
-	auto password = params["password"].as_string();
-	bserv::db_result r = tx.exec(
-		"insert into auth_user "
-		"(username, password, is_superuser, "
-		"first_name, last_name, email, is_active) values "
-		"(?, ?, ?, ?, ?, ?, ?)",
-		username,
-		bserv::utils::security::encode_password(
-			password.c_str()), false,
-		get_or_empty(params, "first_name"),
-		get_or_empty(params, "last_name"),
-		get_or_empty(params, "email"), true);
-	lginfo << r.query();
-	tx.commit(); // you must manually commit changes
-	return {
-		{"success", true},
-		{"message", "user registered"}
-	};
-}
-
-std::nullopt_t zb_register(																//注册（与页面相关部分）
-	bserv::request_type& request,
-	bserv::response_type& response,
-	boost::json::object&& params,
-	std::shared_ptr<bserv::db_connection> conn,
-	std::shared_ptr<bserv::session_type> session_ptr) {
-	boost::json::object context = zb_user_register(request, std::move(params), conn);
-	return index("zb_test.html", session_ptr, response, context);
-}
-
-boost::json::object zb_user_disable(
+boost::json::object delete_account(
 	bserv::request_type& request,
 	boost::json::object&& params,
 	std::shared_ptr<bserv::db_connection> conn,
@@ -669,34 +623,28 @@ boost::json::object zb_user_disable(
 
 	return {
 		{"success", true},
-		{"message", "disable successfully"}
+		{"message", "delete successfully"}
 	};
 }
 
-std::nullopt_t zb_disable(
+std::nullopt_t form_delete_account(
 	bserv::request_type& request,
 	bserv::response_type& response,
 	boost::json::object&& params,
 	std::shared_ptr<bserv::db_connection> conn,
 	std::shared_ptr<bserv::session_type> session_ptr) {
 	lgdebug << params << std::endl;
-	auto context = zb_user_disable(request, std::move(params), conn, session_ptr);
-	lginfo << "disable: " << context << std::endl;
-	return index("zb_test.html", session_ptr, response, context);
+	auto context = delete_account(request, std::move(params), conn, session_ptr);
+	lginfo << "deleted: " << context << std::endl;
+	return index("index.html", session_ptr, response, context);
 }
 
-boost::json::object zb_musician_1(
+boost::json::object process_application(
 	bserv::request_type& request,
 	boost::json::object&& params,
 	std::shared_ptr<bserv::db_connection> conn,
 	std::shared_ptr<bserv::session_type> session_ptr) {
 	bserv::session_type& session = *session_ptr;
-	if (!session.count("user")) {
-		return {
-			{"success", false},
-			{"message", "please login first"}
-		};
-	}
 	auto& now_user = session["user"].as_object();
 	auto username = now_user["username"].as_string();
 	bserv::db_transaction tx{ conn };
@@ -705,24 +653,23 @@ boost::json::object zb_musician_1(
 		"set is_musician = '1' "
 		"where username = ?", username);
 	lginfo << r.query();
-	tx.commit(); // you must manually commit changes
+	tx.commit();
 	return {
 		{"success", true},
 		{"message", "application to be a musician success!"}
 	};
 }
 
-std::nullopt_t zb_be_musician(
+std::nullopt_t apply_for_musician(
 	bserv::request_type& request,
 	bserv::response_type& response,
 	boost::json::object&& params,
 	std::shared_ptr<bserv::db_connection> conn,
 	std::shared_ptr<bserv::session_type> session_ptr) {
 	lgdebug << params << std::endl;
-	auto context = zb_musician_1(request, std::move(params), conn, session_ptr);
-	lginfo << "to be musician: " << context << std::endl;
-	return index("home.html", session_ptr, response, context);
-
+	auto context = process_application(request, std::move(params), conn, session_ptr);
+	lginfo << "apply for musician: " << context << std::endl;
+	return redirect_to_profile(conn, session_ptr, response, std::move(context));
 }
 
 
@@ -732,12 +679,25 @@ std::nullopt_t redirect_to_applicant(
 	bserv::response_type& response,
 	int page_id,
 	boost::json::object&& context) {
-
-
-
-
-	lgdebug << "view users: " << page_id << std::endl;
+	bserv::session_type& session = *session_ptr;
+	if (!session.count("user")) {
+		context = {
+			{"success", false},
+			{"message", "please login first"}
+		};
+		return index("index.html", session_ptr, response, context);
+	}
 	bserv::db_transaction tx{ conn };
+	auto opt_now_user = get_user(tx, session["user"].as_object()["username"].as_string());
+	auto& now_user = opt_now_user.value();
+	if (!now_user["is_superuser"].as_bool()) {
+		context = {
+			{"success", false},
+			{"message", "not superuser"}
+		};
+		return index("index.html", session_ptr, response, context);
+	}
+	lgdebug << "view users: " << page_id << std::endl;
 	bserv::db_result db_res = tx.exec("select count(*) from auth_user;");
 	lginfo << db_res.query();
 	std::size_t total_users = (*db_res.begin())[0].as<std::size_t>();
@@ -745,7 +705,7 @@ std::nullopt_t redirect_to_applicant(
 	int total_pages = (int)total_users / 10;
 	if (total_users % 10 != 0) ++total_pages;
 	lgdebug << "total pages: " << total_pages << std::endl;
-	db_res = tx.exec("select * from auth_user where is_musician = '1' limit 10;");
+	db_res = tx.exec("select * from auth_user where is_musician = '1' and is_active=true limit 10 offset ?;", (page_id - 1) * 10);
 	lginfo << db_res.query();
 	auto users = orm_user.convert_to_vector(db_res);
 	boost::json::array json_users;
@@ -792,7 +752,7 @@ std::nullopt_t redirect_to_applicant(
 	return index("superuser.html", session_ptr, response, context);
 }
 
-std::nullopt_t zb_find_applicant(
+std::nullopt_t manage_applications(
 	std::shared_ptr<bserv::db_connection> conn,
 	std::shared_ptr<bserv::session_type> session_ptr,
 	bserv::response_type& response,
@@ -802,84 +762,76 @@ std::nullopt_t zb_find_applicant(
 	return redirect_to_applicant(conn, session_ptr, response, page_id, std::move(context));
 }
 
-
-
-
-boost::json::object zb_user_verify(
+boost::json::object modify_musician(
 	bserv::request_type& request,
 	boost::json::object&& params,
 	std::shared_ptr<bserv::db_connection> conn,
 	std::shared_ptr<bserv::session_type> session_ptr,
 	int temp) {
-	if (request.method() != boost::beast::http::verb::post) {
-		throw bserv::url_not_found_exception{};
-	}
-	if (params.count("username") == 0) {
+	bserv::session_type& session = *session_ptr;
+	if (!session.count("user")) {
 		return {
 			{"success", false},
-			{"message", "`username` is required"}
+			{"message", "please login first"}
 		};
 	}
-	auto username = params["username"].as_string();
+	if (params.count("user_id") == 0) {
+		return {
+			{"success", false},
+			{"message", "`user_id` is required"}
+		};
+	}
+	std::string str_user_id = get_or_empty(params, "user_id");
+	auto user_id = std::stoi(str_user_id);
+
 	bserv::db_transaction tx{ conn };
-	auto opt_user = get_user(tx, username);
-	if (!opt_user.has_value()) {
+	auto opt_now_user = get_user(tx, session["user"].as_object()["username"].as_string());
+	auto& now_user = opt_now_user.value();
+	if (!now_user["is_superuser"].as_bool()) {
 		return {
 			{"success", false},
-			{"message", "invalid username/password"}
-		};
-	}
-	lginfo << 9999;
-	auto& user = opt_user.value();
-	if (!user["is_active"].as_bool()) {
-		return {
-			{"success", false},
-			{"message", "invalid username/password"}
+			{"message", "not superuser"}
 		};
 	}
 	
-	bserv::db_result r;
-	if (temp == 0) {							//is_musician 改为0
-		r = tx.exec(
-			"update auth_user "
-			"set is_musician = '0'"
-			"where username = ?", username);
-	}
-	else if (temp == 2) {
-		r = tx.exec(
-			"update auth_user "
-			"set is_musician = '2'"
-			"where username = ?", username);
-	}
+	bserv::db_result r = tx.exec(
+		"update auth_user "
+		"set is_musician = ?"
+		"where id = ?", temp, user_id);
 	lginfo << r.query();
 	tx.commit();
-
-
 	return {
 		{"success", true},
-		{"message", "verify successfully"}
+		{"message", "modified successfully"}
 	};
 }
 
-std::nullopt_t zb_verify(
+std::nullopt_t reject_application(
 	bserv::request_type& request,
 	bserv::response_type& response,
 	boost::json::object&& params,
 	std::shared_ptr<bserv::db_connection> conn,
-	std::shared_ptr<bserv::session_type> session_ptr,
-	const std::string& temp) {
+	std::shared_ptr<bserv::session_type> session_ptr) {
 	lgdebug << params << std::endl;
-	int temp_1 = std::stoi(temp);
-	auto context = zb_user_verify(request, std::move(params), conn, session_ptr, temp_1);
-	lginfo << "verify: " << context << std::endl;
+	auto context = modify_musician(request, std::move(params), conn, session_ptr, 0);
+	lginfo << "reject: " << context << std::endl;
 	return redirect_to_applicant(conn, session_ptr, response, 1, std::move(context));
-	/*return index("base.html", session_ptr, response, context);*/
 }
 
-boost::json::object zb_change_infornmation(										
+std::nullopt_t pass_application(
 	bserv::request_type& request,
-	// the json object is obtained from the request body,
-	// as well as the url parameters
+	bserv::response_type& response,
+	boost::json::object&& params,
+	std::shared_ptr<bserv::db_connection> conn,
+	std::shared_ptr<bserv::session_type> session_ptr) {
+	lgdebug << params << std::endl;
+	auto context = modify_musician(request, std::move(params), conn, session_ptr, 2);
+	lginfo << "reject: " << context << std::endl;
+	return redirect_to_applicant(conn, session_ptr, response, 1, std::move(context));
+}
+
+boost::json::object change_profile(
+	bserv::request_type& request,
 	boost::json::object&& params,
 	std::shared_ptr<bserv::db_connection> conn,
 	std::shared_ptr<bserv::session_type> session_ptr) {
@@ -888,42 +840,47 @@ boost::json::object zb_change_infornmation(
 	}
 	bserv::session_type& session = *session_ptr;
 	auto& now_user = session["user"].as_object();
-	auto username = now_user["username"].as_string();
-
+	auto now_user_id = now_user["id"].as_int64();
 	bserv::db_transaction tx{ conn };
+	bserv::db_result r;
+	if (get_or_empty(params, "first_name") != "") {
+		r = tx.exec(
+			"update auth_user "
+			"set first_name = ? "
+			"where id = ?",
+			get_or_empty(params, "first_name"), now_user_id);
+		lginfo << r.query();
+	}
+	if (get_or_empty(params, "last_name") != "") {
+		r = tx.exec(
+			"update auth_user "
+			"set last_name = ? "
+			"where id = ?",
+			get_or_empty(params, "last_name"), now_user_id);
+		lginfo << r.query();
+	}
+	if (get_or_empty(params, "email") != "") {
+		r = tx.exec(
+			"update auth_user "
+			"set email = ? "
+			"where id = ?",
+			get_or_empty(params, "email"), now_user_id);
+		lginfo << r.query();
+	}
+	tx.commit();
 
-	bserv::db_result r = tx.exec(
-		"update auth_user "
-		"set first_name = ? "
-		"where username = ?",
-		get_or_empty(params, "first_name"), username);
-	lginfo << r.query();
-	r = tx.exec(
-		"update auth_user "
-		"set last_name = ? "
-		"where username = ?",
-		get_or_empty(params, "last_name"), username);
-	lginfo << r.query();
-
-	r = tx.exec(
-		"update auth_user "
-		"set email = ? "
-		"where username = ?",
-		get_or_empty(params, "email"), username);
-	lginfo << r.query();
-	tx.commit(); // you must manually commit changes
 	return {
 		{"success", true},
-		{"message", "user changed"}
+		{"message", "profile changed"}
 	};
 }
 
-std::nullopt_t zb_change(																
+std::nullopt_t form_change_profile(
 	bserv::request_type& request,
 	bserv::response_type& response,
 	boost::json::object&& params,
 	std::shared_ptr<bserv::db_connection> conn,
 	std::shared_ptr<bserv::session_type> session_ptr) {
-	boost::json::object context = zb_change_infornmation(request, std::move(params), conn, session_ptr);
-	return index("home.html", session_ptr, response, context);
+	boost::json::object context = change_profile(request, std::move(params), conn, session_ptr);
+	return redirect_to_profile(conn, session_ptr, response, std::move(context));
 }
