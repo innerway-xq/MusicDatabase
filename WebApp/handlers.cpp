@@ -1129,6 +1129,12 @@ boost::json::object change_profile(
 		throw bserv::url_not_found_exception{};
 	}
 	bserv::session_type& session = *session_ptr;
+	if (!session.count("user")) {
+		return{
+			{"success", false},
+			{"message", "please login first"}
+		};
+	}
 	auto& now_user = session["user"].as_object();
 	auto now_user_id = now_user["id"].as_int64();
 	bserv::db_transaction tx{ conn };
