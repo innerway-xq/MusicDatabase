@@ -34,3 +34,4 @@ CREATE TABLE favorite (
     PRIMARY KEY(user_id, music_id)
 );
 
+insert into "auth_user" ("username", password, is_superuser, first_name, last_name, email, is_active) values ('superuser', 'KZfaabUkFFUZLArn$w5XUUH3i2eohBk26uvvUujjPtzo9yV1hNeCVp/P5k64=', true, '', '', '', true);
