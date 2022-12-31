@@ -577,7 +577,8 @@ std::nullopt_t redirect_to_music_repo(
 	int total_pages = (int)total_music_repo / 10;
 	if (total_music_repo % 10 != 0) ++total_pages;
 	lgdebug << "total pages: " << total_pages << std::endl;
-	db_res = tx.exec("select * from music where is_active = true limit 10 offset ?;", (page_id - 1) * 10);
+	db_res = tx.exec("select music_id, username musician, music_name, music_path, music.is_active"
+		" from music join auth_user on music.musician_id=auth_user.id where music.is_active = true limit 10 offset ?;", (page_id - 1) * 10);
 	lginfo << db_res.query();
 	auto music_repo = orm_music.convert_to_vector(db_res);
 	boost::json::array json_music_repo;
