@@ -64,7 +64,6 @@
       </td>
       {% endif %} 
     </tr>
-
   </tbody>
 </table>
 
@@ -140,6 +139,27 @@
       <th scope="row">{{ loop.index1 }}</th>
       <td>{{ music.musician }}</td>
       <td><a class="btn-link" type="button" href="/music/{{ music.music_id}}">{{ music.music_name }}</a></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<table class="table" style="margin-top: 100px;">
+  <thead>
+    <tr>
+      <th scope="col"><b>MyMusic</b></th>
+      <th scope="col">musician</th>
+      <th scope="col">music_name</th>
+      <th scope="col"></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for music in mymusic %}
+    <tr style="vertical-align: middle;">
+      <th scope="row">{{ loop.index1 }}</th>
+      <td>{{ music.musician }}</td>
+      <td><a class="btn-link" type="button" href="/music/{{ music.music_id}}">{{ music.music_name }}</a></td>
+      <td style="width: 20px;"><a class="btn btn-outline-danger" href="/delete_music?delete_music_id={{music.music_id}}">Delete</a></td>
     </tr>
     {% endfor %}
   </tbody>

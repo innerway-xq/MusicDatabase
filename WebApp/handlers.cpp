@@ -691,6 +691,16 @@ std::nullopt_t redirect_to_profile(
 		json_favorite.push_back(music);
 	}
 	context["favorite"] = json_favorite;
+	db_res = tx.exec("select music_id, username, music_name, music_path, music.is_active"
+		" from music join auth_user on music.musician_id=auth_user.id"
+		" where id = ? and music.is_active=true order by music_id;", user["id"].as_int64());
+	lginfo << db_res.query();
+	auto mymusic = orm_music.convert_to_vector(db_res);
+	boost::json::array json_mymusic;
+	for (auto& music : mymusic) {
+		json_mymusic.push_back(music);
+	}
+	context["mymusic"] = json_mymusic;
 	return index("userprofile.html", session_ptr, response, context);
 }
 
@@ -1162,5 +1172,48 @@ std::nullopt_t form_change_profile(
 	std::shared_ptr<bserv::db_connection> conn,
 	std::shared_ptr<bserv::session_type> session_ptr) {
 	boost::json::object context = change_profile(request, std::move(params), conn, session_ptr);
+	return redirect_to_profile(conn, session_ptr, response, std::move(context));
+}
+
+std::nullopt_t delete_music(
+	bserv::request_type& request,
+	bserv::response_type& response,
+	boost::json::object&& params,
+	std::shared_ptr<bserv::db_connection> conn,
+	std::shared_ptr<bserv::session_type> session_ptr) {
+	boost::json::object context;
+	//检查是否为音乐作者或superuser
+	bserv::session_type& session = *session_ptr;
+	if (!session.count("user")) {
+		context = {
+			{"success", false},
+			{"message", "please login first"}
+		};
+		return index("index.html", session_ptr, response, context);
+	}
+	bserv::db_transaction tx{ conn };
+	auto opt_now_user = get_user(tx, session["user"].as_object()["username"].as_string());
+	auto& now_user = opt_now_user.value();
+	std::string str_music_id = get_or_empty(params, "delete_music_id");
+	lgdebug << "delete: " << str_music_id;
+	int music_id = std::stoi(str_music_id);
+	bserv::db_result db_res = tx.exec("select musician_id from music where music_id = ?;", music_id);
+	lginfo << db_res.query();
+	int music_user_id = (*db_res.begin())[0].as<int>();
+	if (!(now_user["id"].as_int64() == music_user_id || now_user["is_superuser"].as_bool())) {
+		context = {
+			{"success", false},
+			{"message", "not allowed"}
+		};
+		tx.abort();
+		return redirect_to_music(conn, session_ptr, response, session["music"].as_object()["music_id"].as_int64(), std::move(context));
+	}
+	db_res = tx.exec("update music set is_active=false where music_id=?;", music_id);
+	lginfo << db_res.query();
+	context = {
+		{"success", true},
+		{"message", "music deleted"}
+	};
+	tx.commit();
 	return redirect_to_profile(conn, session_ptr, response, std::move(context));
 }
