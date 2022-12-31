@@ -98,18 +98,6 @@ std::nullopt_t form_add_music(
 std::nullopt_t zb_home(
     std::shared_ptr<bserv::session_type> session_ptr,
     bserv::response_type& response);
-std::nullopt_t zb_test_UI(
-    std::shared_ptr<bserv::session_type> session_ptr,
-    bserv::response_type& response);
-std::nullopt_t zb_register_UI(
-    std::shared_ptr<bserv::session_type> session_ptr,
-    bserv::response_type& response);
-
-
-boost::json::object zb_user_register(                   //处理数据库相关数据的
-    bserv::request_type& request,
-    boost::json::object&& params,
-    std::shared_ptr<bserv::db_connection> conn);
 std::nullopt_t zb_register(                             //处理页面的
     bserv::request_type& request,
     bserv::response_type& response,
@@ -122,30 +110,17 @@ std::nullopt_t zb_disable(
     boost::json::object&& params,
     std::shared_ptr<bserv::db_connection> conn,
     std::shared_ptr<bserv::session_type> session_ptr);
-boost::json::object zb_user_disable(
-    bserv::request_type& request,
-    boost::json::object&& params,
-    std::shared_ptr<bserv::db_connection> conn,
-    std::shared_ptr<bserv::session_type> session_ptr);
 std::nullopt_t zb_be_musician(                              //申请成为musician
     bserv::request_type& request,
     bserv::response_type& response,
     boost::json::object&& params,
     std::shared_ptr<bserv::db_connection> conn,
     std::shared_ptr<bserv::session_type> session_ptr);
-boost::json::object zb_musician_1(
-    bserv::request_type& request,
-    boost::json::object&& params,
-    std::shared_ptr<bserv::db_connection> conn,
-    std::shared_ptr<bserv::session_type> session_ptr);
-
 std::nullopt_t zb_find_applicant(                              
     std::shared_ptr<bserv::db_connection> conn,
     std::shared_ptr<bserv::session_type> session_ptr,
     bserv::response_type& response,
     const std::string& page_num);
-
-
 std::nullopt_t zb_verify(
     bserv::request_type& request,
     bserv::response_type& response,
@@ -153,20 +128,6 @@ std::nullopt_t zb_verify(
     std::shared_ptr<bserv::db_connection> conn,
     std::shared_ptr<bserv::session_type> session_ptr,
     const std::string& temp);
-
-boost::json::object zb_user_verify(
-    bserv::request_type& request,
-    boost::json::object&& params,
-    std::shared_ptr<bserv::db_connection> conn,
-    std::shared_ptr<bserv::session_type> session_ptr,
-    int temp);
-
-
-boost::json::object zb_change_infornmation(                   //处理数据库相关数据的
-    bserv::request_type& request,
-    boost::json::object&& params,
-    std::shared_ptr<bserv::db_connection> conn,
-    std::shared_ptr<bserv::session_type> session_ptr);
 std::nullopt_t zb_change(                             //处理页面的
     bserv::request_type& request,
     bserv::response_type& response,

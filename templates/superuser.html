@@ -6,7 +6,6 @@
 {% if user.is_superuser %}
     <div class="alert alert-success" role="alert">
       You are superuser!
-
       <table class="table">
         <thead>
           <tr>
@@ -18,7 +17,7 @@
           </tr>
         </thead>
         <tbody>
-          {% for applicant in applicants %},
+          {% for applicant in applicants %}
           <tr style="vertical-align: middle;">
             <th scope="row">{{ loop.index1 }}</th>
             <td>{{ applicant.username }}</td>

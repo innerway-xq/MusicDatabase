@@ -547,18 +547,6 @@ std::nullopt_t zb_home(											//主页面
 	return index("home.html", session_ptr, response, context);
 }
 
-std::nullopt_t zb_test_UI(											//主页面
-	std::shared_ptr<bserv::session_type> session_ptr,
-	bserv::response_type& response) {
-	boost::json::object context;
-	return index("zb_test_UI.html", session_ptr, response, context);
-}
-std::nullopt_t zb_register_UI(											//主页面
-	std::shared_ptr<bserv::session_type> session_ptr,
-	bserv::response_type& response) {
-	boost::json::object context;
-	return index("zb_register_UI.html", session_ptr, response, context);
-}
 
 
 boost::json::object zb_user_register(										//注册（与数据库连接部分）
@@ -618,18 +606,6 @@ std::nullopt_t zb_register(																//注册（与页面相关部分）
 	std::shared_ptr<bserv::db_connection> conn,
 	std::shared_ptr<bserv::session_type> session_ptr) {
 	boost::json::object context = zb_user_register(request, std::move(params), conn);
-	return index("zb_test.html", session_ptr, response, context);
-}
-
-std::nullopt_t zb_disable(
-	bserv::request_type& request,
-	bserv::response_type& response,
-	boost::json::object&& params,
-	std::shared_ptr<bserv::db_connection> conn,
-	std::shared_ptr<bserv::session_type> session_ptr) {
-	lgdebug << params << std::endl;
-	auto context = zb_user_disable(request, std::move(params), conn, session_ptr);
-	lginfo << "disable: " << context << std::endl;
 	return index("zb_test.html", session_ptr, response, context);
 }
 
@@ -697,17 +673,16 @@ boost::json::object zb_user_disable(
 	};
 }
 
-std::nullopt_t zb_be_musician(
+std::nullopt_t zb_disable(
 	bserv::request_type& request,
 	bserv::response_type& response,
 	boost::json::object&& params,
 	std::shared_ptr<bserv::db_connection> conn,
 	std::shared_ptr<bserv::session_type> session_ptr) {
 	lgdebug << params << std::endl;
-	auto context = zb_musician_1(request, std::move(params), conn, session_ptr);
-	lginfo << "to be musician: " << context << std::endl;
-	return index("home.html", session_ptr, response, context);
-
+	auto context = zb_user_disable(request, std::move(params), conn, session_ptr);
+	lginfo << "disable: " << context << std::endl;
+	return index("zb_test.html", session_ptr, response, context);
 }
 
 boost::json::object zb_musician_1(
@@ -735,6 +710,19 @@ boost::json::object zb_musician_1(
 		{"success", true},
 		{"message", "application to be a musician success!"}
 	};
+}
+
+std::nullopt_t zb_be_musician(
+	bserv::request_type& request,
+	bserv::response_type& response,
+	boost::json::object&& params,
+	std::shared_ptr<bserv::db_connection> conn,
+	std::shared_ptr<bserv::session_type> session_ptr) {
+	lgdebug << params << std::endl;
+	auto context = zb_musician_1(request, std::move(params), conn, session_ptr);
+	lginfo << "to be musician: " << context << std::endl;
+	return index("home.html", session_ptr, response, context);
+
 }
 
 
@@ -815,20 +803,7 @@ std::nullopt_t zb_find_applicant(
 }
 
 
-std::nullopt_t zb_verify(
-	bserv::request_type& request,
-	bserv::response_type& response,
-	boost::json::object&& params,
-	std::shared_ptr<bserv::db_connection> conn,
-	std::shared_ptr<bserv::session_type> session_ptr,
-	const std::string& temp) {
-	lgdebug << params << std::endl;
-	int temp_1 = std::stoi(temp);
-	auto context = zb_user_verify(request, std::move(params), conn, session_ptr, temp_1);
-	lginfo << "verify: " << context << std::endl;
-	return redirect_to_applicant(conn, session_ptr, response, 1, std::move(context));
-	/*return index("base.html", session_ptr, response, context);*/
-}
+
 
 boost::json::object zb_user_verify(
 	bserv::request_type& request,
@@ -886,9 +861,22 @@ boost::json::object zb_user_verify(
 	};
 }
 
+std::nullopt_t zb_verify(
+	bserv::request_type& request,
+	bserv::response_type& response,
+	boost::json::object&& params,
+	std::shared_ptr<bserv::db_connection> conn,
+	std::shared_ptr<bserv::session_type> session_ptr,
+	const std::string& temp) {
+	lgdebug << params << std::endl;
+	int temp_1 = std::stoi(temp);
+	auto context = zb_user_verify(request, std::move(params), conn, session_ptr, temp_1);
+	lginfo << "verify: " << context << std::endl;
+	return redirect_to_applicant(conn, session_ptr, response, 1, std::move(context));
+	/*return index("base.html", session_ptr, response, context);*/
+}
 
-
-boost::json::object zb_change_infornmation(										//注册（与数据库连接部分）
+boost::json::object zb_change_infornmation(										
 	bserv::request_type& request,
 	// the json object is obtained from the request body,
 	// as well as the url parameters
@@ -930,7 +918,7 @@ boost::json::object zb_change_infornmation(										//注册（与数据库连接部分）
 	};
 }
 
-std::nullopt_t zb_change(																//注册（与页面相关部分）
+std::nullopt_t zb_change(																
 	bserv::request_type& request,
 	bserv::response_type& response,
 	boost::json::object&& params,
