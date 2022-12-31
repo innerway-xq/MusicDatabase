@@ -13,7 +13,7 @@
 
 <div class="container">
   <div class="player">
-    <div class="like waves-effect waves-light">
+    <div class="like waves-effect waves-light" onclick="Favorite()" >
       <i class="icon-heart"></i>
     </div>
     <div class="mask"></div>
@@ -65,6 +65,12 @@
     document.getElementById("info-one-duration").innerHTML = duration;
     document.getElementById("info-two-duration").innerHTML = duration;
   }
+  async function Favorite() {
+    let response = await fetch("/form_process_favorite");
+  }
+  if ({{ is_favorite }})
+    $(".icon-heart").toggleClass("like-active");
+
 </script>
 
 <br><br>

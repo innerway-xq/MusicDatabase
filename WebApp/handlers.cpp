@@ -630,11 +630,21 @@ std::nullopt_t redirect_to_music(
 	bserv::response_type& response,
 	int music_id,
 	boost::json::object&& context) {
+	bserv::session_type& session = *session_ptr;
+	if (!session.count("user")) {
+		context = {
+			{"success", false},
+			{"message", "please login first"}
+		};
+		return index("index.html", session_ptr, response, context);
+	}
+	auto& now_user = session["user"].as_object();
+
 	lgdebug << "view music: " << music_id << std::endl;
 	load_music(conn, session_ptr, music_id, context);
 	bserv::db_transaction tx{ conn };
 	bserv::db_result db_res = tx.exec("select comment_id, username, comment_time, comment_content"
-		" from comment join auth_user on comment.user_id=auth_user.id where music_id = ?;", music_id);
+		" from comment join auth_user on comment.user_id=auth_user.id where music_id = ? order by comment_time desc;", music_id);
 	lginfo << db_res.query();
 	auto comments = orm_comment.convert_to_vector(db_res);
 	boost::json::array json_comments;
@@ -643,6 +653,11 @@ std::nullopt_t redirect_to_music(
 		json_comments.push_back(comment);
 	}
 	context["comments"] = json_comments;
+
+	db_res = tx.exec("select create_time from favorite where user_id=? and music_id=?", now_user["id"].as_int64(), music_id);
+	lginfo << db_res.query();
+	context["is_favorite"] = !(*db_res.begin())[0].is_null();
+	session["is_favorite"] = context["is_favorite"];
 	return index("music.html", session_ptr, response, context);
 }
 
@@ -713,8 +728,6 @@ std::nullopt_t form_delete_comment(
 	std::shared_ptr<bserv::db_connection> conn,
 	std::shared_ptr<bserv::session_type> session_ptr) {
 	boost::json::object context;
-	lgdebug << request.body();
-	lgdebug << params;
 	//检查是否为评论作者或者superuser
 	bserv::session_type& session = *session_ptr;
 	if (!session.count("user")) {
@@ -748,4 +761,40 @@ std::nullopt_t form_delete_comment(
 	};
 	tx.commit();
 	return redirect_to_music(conn, session_ptr, response, session["music"].as_object()["music_id"].as_int64(), std::move(context));
+}
+
+std::nullopt_t form_process_favorite(
+	bserv::request_type& request,
+	bserv::response_type& response,
+	boost::json::object&& params,
+	std::shared_ptr<bserv::db_connection> conn,
+	std::shared_ptr<bserv::session_type> session_ptr) {
+	boost::json::object context;
+	lgdebug << request.body();
+	bserv::session_type& session = *session_ptr;
+	bool is_favorite = session["is_favorite"].as_bool();
+	auto& now_user = session["user"].as_object();
+	auto& now_music = session["music"].as_object();
+	bserv::db_transaction tx{ conn };
+	bserv::db_result db_res;
+	if (is_favorite) {
+		db_res = tx.exec("delete from favorite where user_id=? and music_id=?;", now_user["id"].as_int64(), now_music["music_id"].as_int64());
+		lginfo << db_res.query();
+		tx.commit();
+		context = {
+			{"success", true},
+			{"message", "music deleted from favorite"}
+		};
+	}
+	else {
+		std::time_t now = std::time(NULL);
+		db_res = tx.exec("insert into favorite values(?,?,to_timestamp(?));", now_user["id"].as_int64(), now_music["music_id"].as_int64(), now);
+		lginfo << db_res.query();
+		tx.commit();
+		context = {
+			{"success", true},
+			{"message", "music added to favorite"}
+		};
+	}
+	return redirect_to_music(conn, session_ptr, response, now_music["music_id"].as_int64(), std::move(context));
 }
