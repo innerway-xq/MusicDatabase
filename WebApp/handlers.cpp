@@ -515,7 +515,7 @@ std::nullopt_t redirect_to_users(
 	int total_pages = (int)total_users / 10;
 	if (total_users % 10 != 0) ++total_pages;
 	lgdebug << "total pages: " << total_pages << std::endl;
-	db_res = tx.exec("select * from auth_user limit 10 offset ?;", (page_id - 1) * 10);
+	db_res = tx.exec("select * from auth_user order by id limit 10 offset ?;", (page_id - 1) * 10);
 	lginfo << db_res.query();
 	auto users = orm_user.convert_to_vector(db_res);
 	boost::json::array json_users;
