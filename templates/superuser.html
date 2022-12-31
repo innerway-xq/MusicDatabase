@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}Applications{% endblock %}
+
+{% block content %}
+
+{% if user.is_superuser %}
+<table class="table">
+  <thead>
+    <tr>
+      <th scope="col">#</th>
+      <th scope="col">Username</th>
+      <th scope="col">First</th>
+      <th scope="col">Last</th>
+      <th scope="col">Email</th>
+      <th scope="col"></th>
+      <th scope="col"></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for applicant in applicants %}
+    <tr style="vertical-align: middle;">
+      <th scope="row">{{ loop.index1 }}</th>
+      <td>{{ applicant.username }}</td>
+      <td>{{ applicant.first_name }}</td>
+      <td>{{ applicant.last_name }}</td>
+      <td>{{ applicant.email }}</td>
+      <td style="width: 20px;"><a class="btn btn-outline-danger" href="/reject_application?user_id={{ applicant.id }}">Reject</a></td>
+      <td style="width: 20px;"><a class="btn btn-outline-success"  href="/pass_application?user_id={{ applicant.id }}">Pass</a></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% endif%}
